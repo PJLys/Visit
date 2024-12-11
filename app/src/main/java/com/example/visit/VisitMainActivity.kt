@@ -2,16 +2,12 @@ package com.example.visit
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.content.DialogInterface
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
-import android.widget.FrameLayout
-import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -28,9 +24,10 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.Marker
-import com.google.android.gms.maps.model.MarkerOptions
+
 import com.google.android.gms.maps.model.CameraPosition
+import com.example.visit.visualisation.PopupVisualiser
+import com.example.visit.visualisation.Visualiser
 
 class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
     private var map: GoogleMap? = null
@@ -48,7 +45,7 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
     private var nearbyPlaceNames: Array<String?> = arrayOfNulls(0)
     private var nearbyPlaceAddresses: Array<String?> = arrayOfNulls(0)
     private var nearbyPlaceLatLngs: Array<LatLng?> = arrayOfNulls(0)
-
+    private lateinit var visualiser: Visualiser
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,6 +91,9 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onMapReady(map: GoogleMap) {
         this.map = map
+
+        // Initialize the Visualiser (PopupVisualiser in this case)
+        visualiser = PopupVisualiser(this, map)
 
         getLocationPermission()
         updateLocationUI()
@@ -146,17 +146,20 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
             }
         }
         updateLocationUI()
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)  // Calling the super method
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
     private fun searchNearbyPlaces() {
-        if (map == null) return
+        if (map == null) {
+            Log.e(TAG, "Map is not ready.")
+            return
+        }
 
         if (locationPermissionGranted) {
             lastKnownLocation?.let { location ->
                 val placeFields = listOf(Place.Field.ID, Place.Field.DISPLAY_NAME)
                 val center = LatLng(location.latitude, location.longitude)
-                val circle = CircularBounds.newInstance(center, 1000.0)  // Search within 100m radius
+                val circle = CircularBounds.newInstance(center, 1000.0)  // Search within 1000m radius
 
                 val includedTypes = listOf("restaurant", "cafe")
                 val excludedTypes = listOf("pizza_restaurant", "american_restaurant")
@@ -170,11 +173,11 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
                 placesClient.searchNearby(searchNearbyRequest)
                     .addOnSuccessListener { response: SearchNearbyResponse ->
                         val places = response.places
-                        nearbyPlaceNames = Array(places.size) { places[it].name }
-                        nearbyPlaceAddresses = Array(places.size) { places[it].address }
-                        nearbyPlaceLatLngs = Array(places.size) { places[it].latLng }
+                        nearbyPlaceNames = Array(places.size) { places[it].displayName }
+                        nearbyPlaceAddresses = Array(places.size) { places[it].adrFormatAddress }
+                        nearbyPlaceLatLngs = Array(places.size) { places[it].location }
 
-                        showNearbyPlacesDialog()
+                        visualiser.displayNearbyPlaces(nearbyPlaceNames, nearbyPlaceAddresses, nearbyPlaceLatLngs)
                     }
                     .addOnFailureListener { exception ->
                         Log.e(TAG, "Failed to get nearby places: ", exception)
@@ -183,27 +186,6 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
         } else {
             getLocationPermission()
         }
-    }
-
-    private fun showNearbyPlacesDialog() {
-        val listener = DialogInterface.OnClickListener { _, which ->
-            val markerLatLng = nearbyPlaceLatLngs[which]
-            val markerSnippet = nearbyPlaceAddresses[which]
-
-            markerLatLng?.let {
-                map?.addMarker(MarkerOptions()
-                    .title(nearbyPlaceNames[which])
-                    .position(it)
-                    .snippet(markerSnippet))
-
-                map?.moveCamera(CameraUpdateFactory.newLatLngZoom(it, DEFAULT_ZOOM.toFloat()))
-            }
-        }
-
-        AlertDialog.Builder(this)
-            .setTitle(R.string.pick_place)
-            .setItems(nearbyPlaceNames, listener)
-            .show()
     }
 
     private fun updateLocationUI() {
