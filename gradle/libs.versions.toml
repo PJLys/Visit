@@ -1,6 +1,6 @@
 [versions]
 compileSdk = "34"
-gradle = "8.7.2"
+gradle = "8.7.3"
 kotlinGradlePlugin = "2.0.0"
 minSdk = "21"
 secretsGradlePlugin = "2.0.1"
@@ -22,6 +22,7 @@ javaVersion = "21"
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 gradle = { module = "com.android.tools.build:gradle", version.ref = "gradle" }
 kotlinGradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlinGradlePlugin" }
+kotlinStdlibJdk7 = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk7", version.ref = "kotlinGradlePlugin" }
 playServicesMaps = { group = "com.google.android.gms", name = "play-services-maps", version.ref = "playServicesMaps" }
 places = { group = "com.google.android.libraries.places", name = "places", version.ref = "places" }
 secretsGradlePlugin = { module = "com.google.android.libraries.mapsplatform.secrets-gradle-plugin:secrets-gradle-plugin", version.ref = "secretsGradlePlugin" }

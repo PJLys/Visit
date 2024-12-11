@@ -38,7 +38,7 @@
             android:value="${MAPS_API_KEY}" />
 
         <activity
-            android:name="com.example.currentplacedetailsonmap.MapsActivityCurrentPlace"
+            android:name="com.example.visit.VisitMainActivity"
             android:exported="true"
             android:label="@string/title_activity_maps">
             <intent-filter>

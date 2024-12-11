@@ -24,7 +24,7 @@ android {
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.example.currentplacedetailsonmap"
+        applicationId = "com.example.visit"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = libs.versions.versionCode.get().toInt()
@@ -51,7 +51,7 @@ android {
         targetCompatibility = JavaVersion.toVersion(libs.versions.javaVersion.get())
     }
 
-    namespace = "com.example.currentplacedetailsonmap"
+    namespace = "com.example.visit"
 }
 
 dependencies {
@@ -65,7 +65,7 @@ dependencies {
     testImplementation(libs.junit)
     implementation(libs.coreKtx)
     implementation(libs.lifecycleViewModelKtx)
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:${libs.versions.kotlin.get()}")
+    implementation(libs.kotlinStdlibJdk7)
 }
 
 secrets {

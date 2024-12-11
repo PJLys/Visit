@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package com.example.currentplacedetailsonmap
+package com.example.visit
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -48,7 +48,7 @@ import com.google.android.libraries.places.api.net.PlacesClient
 /**
  * An activity that displays a map showing the place at the device's current location.
  */
-class MapsActivityCurrentPlace : AppCompatActivity(), OnMapReadyCallback {
+class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
     private var map: GoogleMap? = null
     private var cameraPosition: CameraPosition? = null
 
@@ -403,7 +403,7 @@ class MapsActivityCurrentPlace : AppCompatActivity(), OnMapReadyCallback {
     // [END maps_current_place_update_location_ui]
 
     companion object {
-        private val TAG = MapsActivityCurrentPlace::class.java.simpleName
+        private val TAG = VisitMainActivity::class.java.simpleName
         private const val DEFAULT_ZOOM = 15
         private const val PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1
 
