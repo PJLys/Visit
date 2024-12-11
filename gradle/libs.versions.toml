@@ -1,8 +1,9 @@
 [versions]
-compileSdk = "34"
+compileSdk = "35"
+coreKtxVersion = "1.15.0"
 gradle = "8.7.3"
-kotlinGradlePlugin = "2.0.0"
-minSdk = "21"
+kotlinGradlePlugin = "2.1.0"
+minSdk = "33"
 secretsGradlePlugin = "2.0.1"
 targetSdk = "34"
 versionCode = "1"
@@ -10,16 +11,17 @@ versionName = "1.0"
 kotlin = "2.0.0"
 appcompat = "1.7.0"
 playServicesMaps = "19.0.0"
-places = "3.5.0"
+places = "4.1.0"
 volley = "1.2.1"
 junit = "4.13.2"
-coreKtx = "1.13.1"
-lifecycleViewModelKtx = "2.8.4"
+coreKtx = "1.15.0"
+lifecycleViewModelKtx = "2.8.7"
 espressoCore = "3.0.2"
 javaVersion = "21"
 
 [libraries]
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+coreKtxV190 = { module = "androidx.core:core-ktx", version.ref = "coreKtxVersion" }
 gradle = { module = "com.android.tools.build:gradle", version.ref = "gradle" }
 kotlinGradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlinGradlePlugin" }
 kotlinStdlibJdk7 = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk7", version.ref = "kotlinGradlePlugin" }
