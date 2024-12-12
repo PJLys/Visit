@@ -10,15 +10,15 @@ import com.google.android.gms.maps.model.MarkerOptions
 
 class PopupVisualiser(private val context: Context, private val map: GoogleMap) : Visualiser {
 
-    override fun displayNearbyPlaces(
-        placeNames: Array<String?>?,
+    override fun visualisePOIs(
+        placeNames: Array<String>,
         placeAddresses: Array<String?>?,
         placeLatLngs: Array<LatLng?>?
     ) {
         // Convert placeNames to a non-nullable array of CharSequence
         val nonNullPlaceNames: Array<CharSequence> = placeNames
-            ?.map { it ?: "Unknown Place" } // Replace null values with "Unknown Place"
-            ?.toTypedArray() ?: emptyArray()
+            .map { it ?: "Unknown Place" } // Replace null values with "Unknown Place"
+            .toTypedArray()
 
         // Explicitly define the lambda type for the listener
         val listener: (DialogInterface, Int) -> Unit = { _, which ->
@@ -28,7 +28,7 @@ class PopupVisualiser(private val context: Context, private val map: GoogleMap) 
             markerLatLng?.let {
                 map.addMarker(
                     MarkerOptions()
-                        .title(placeNames?.get(which))
+                        .title(placeNames[which])
                         .position(it)
                         .snippet(markerSnippet)
                 )

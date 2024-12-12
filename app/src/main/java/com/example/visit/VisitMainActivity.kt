@@ -12,7 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.visit.search.ButtonRequesterPOI
-import com.example.visit.search.RequestPOI
+import com.example.visit.search.RequestPOIInterface
 import com.example.visit.visualisation.PopupVisualiser
 import com.example.visit.visualisation.Visualiser
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -37,7 +37,7 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
     private var locationPermissionGranted = false
     private var lastKnownLocation: Location? = null
     private lateinit var visualiser: Visualiser
-    private lateinit var poiRequester: RequestPOI
+    private lateinit var poiRequester: RequestPOIInterface
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -72,10 +72,20 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == R.id.option_get_place) {
-            poiRequester.requestNearbyPlaces()
+            // Ensure lastKnownLocation is not null, and provide a default radius if necessary
+            val radius = 1000.0 // Set a radius of 1000 meters, adjust if needed
+            if (lastKnownLocation != null) {
+                poiRequester.fetchPOIs(lastKnownLocation, radius) { placeNames, placeAddresses, placeLatLngs ->
+                    // Here, you can call your visualizer or process the data as needed
+                    visualiser.visualisePOIs(placeNames, placeAddresses, placeLatLngs)
+                }
+            } else {
+                Log.e(TAG, "Last known location is null, cannot fetch POIs.")
+            }
         }
         return true
     }
+
 
     override fun onMapReady(map: GoogleMap) {
         this.map = map
@@ -85,7 +95,8 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
         getLocationPermission()
         updateLocationUI()
 
-        poiRequester = ButtonRequesterPOI(placesClient, lastKnownLocation, visualiser)
+        // Initialize POI requester once the map is ready
+        poiRequester = ButtonRequesterPOI(placesClient)
 
         getDeviceLocation()
     }
@@ -98,8 +109,8 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
                     if (task.isSuccessful) {
                         lastKnownLocation = task.result
                         if (lastKnownLocation != null) {
-                            // Initialize the POI requester here
-                            poiRequester = ButtonRequesterPOI(placesClient, lastKnownLocation, visualiser)
+                            // Update POI requester after getting device location
+                            poiRequester = ButtonRequesterPOI(placesClient)
 
                             // Update the map camera
                             map?.moveCamera(
@@ -114,7 +125,7 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
                             map?.moveCamera(CameraUpdateFactory.newLatLngZoom(defaultLocation, DEFAULT_ZOOM.toFloat()))
 
                             // Initialize POI requester with default location (optional, as a fallback)
-                            poiRequester = ButtonRequesterPOI(placesClient, null, visualiser)
+                            poiRequester = ButtonRequesterPOI(placesClient)
                         }
                     } else {
                         Log.e(TAG, "Failed to get device location.")
@@ -126,7 +137,6 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
             Log.e("Exception: %s", e.message, e)
         }
     }
-
 
     private fun getLocationPermission() {
         if (ContextCompat.checkSelfPermission(this.applicationContext, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
