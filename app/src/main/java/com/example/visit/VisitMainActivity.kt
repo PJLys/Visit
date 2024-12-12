@@ -73,7 +73,7 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == R.id.option_get_place) {
             // Ensure lastKnownLocation is not null, and provide a default radius if necessary
-            val radius = 1000.0 // Set a radius of 1000 meters, adjust if needed
+            val radius = 400.0 // Set a radius of 1000 meters, adjust if needed
             if (lastKnownLocation != null) {
                 poiRequester.fetchPOIs(lastKnownLocation, radius) { placeNames, placeAddresses, placeLatLngs ->
                     // Here, you can call your visualizer or process the data as needed

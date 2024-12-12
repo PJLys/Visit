@@ -13,7 +13,7 @@ class ButtonRequesterPOI(
     private val placesClient: PlacesClient,
 ) : RequestPOIInterface {
 
-    override fun fetchPOIs(location: Location?, radius: Double?, callback: (Array<String>, Array<String?>?, Array<LatLng?>?) -> Unit) {
+    override fun fetchPOIs(location: Location?, radius: Double?, callback: (Array<String?>, Array<String?>?, Array<LatLng?>?) -> Unit) {
         // Ensure that location and radius are valid
         if (location == null || radius == null) {
             Log.e(TAG, "Invalid location or radius.")
@@ -21,7 +21,7 @@ class ButtonRequesterPOI(
         }
 
         // Define the fields to include in the response for each returned place.
-        val placeFields = listOf(Place.Field.ID, Place.Field.DISPLAY_NAME, Place.Field.ADDRESS, Place.Field.LAT_LNG)
+        val placeFields = listOf(Place.Field.ID, Place.Field.DISPLAY_NAME, Place.Field.FORMATTED_ADDRESS, Place.Field.LOCATION)
 
         // Define the search area using CircularBounds.
         val center = LatLng(location.latitude, location.longitude)

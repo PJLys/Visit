@@ -11,7 +11,7 @@ import com.google.android.gms.maps.model.MarkerOptions
 class PopupVisualiser(private val context: Context, private val map: GoogleMap) : Visualiser {
 
     override fun visualisePOIs(
-        placeNames: Array<String>,
+        placeNames: Array<String?>,
         placeAddresses: Array<String?>?,
         placeLatLngs: Array<LatLng?>?
     ) {
