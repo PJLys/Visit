@@ -100,7 +100,7 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
             poiRequester.fetchPOIs(Location("").apply {
                 latitude = location.latitude
                 longitude = location.longitude
-            }, radius = 400.0) { names, addresses, latLngs ->
+            }, radius = 500.0) { names, addresses, latLngs ->
                 // Handle POI data here, e.g., log or display it on the map
                 if (addresses != null && latLngs != null) {
                     for (i in names.indices) {

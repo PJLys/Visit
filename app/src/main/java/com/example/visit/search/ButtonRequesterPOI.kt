@@ -28,7 +28,7 @@ class ButtonRequesterPOI(
         val circle = CircularBounds.newInstance(center, radius) // radius in meters
 
         // Define types to include and exclude.
-        val includedTypes = listOf("restaurant", "cafe")
+        val includedTypes = listOf("historical_place", "monument", "museum")
         val excludedTypes = listOf("pizza_restaurant", "american_restaurant")
 
         // Build the SearchNearbyRequest.
