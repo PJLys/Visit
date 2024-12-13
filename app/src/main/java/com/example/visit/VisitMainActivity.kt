@@ -16,6 +16,7 @@ import com.example.visit.services.location.LocationProvider
 import com.example.visit.services.permission.ActivityPermissionHandler
 import com.example.visit.services.permission.PermissionHandler
 import com.example.visit.visualisation.PopupVisualiser
+import com.example.visit.visualisation.RedDotVisualiser
 import com.example.visit.visualisation.Visualiser
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.GoogleMap
@@ -82,7 +83,7 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
         poiRequester = ButtonRequesterPOI(Places.createClient(this))
 
         // Initialize the visualizer
-        visualizer = PopupVisualiser(this, map)
+        visualizer = RedDotVisualiser(this, map)
 
         // Fetch the current location and move the camera to it
         locationProvider.getLastKnownLocation { location ->
@@ -107,7 +108,7 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
                     }
 
                     // Visualize POIs using PopupVisualiser
-                    (visualizer as PopupVisualiser).visualisePOIs(names, addresses, latLngs)
+                    (visualizer as RedDotVisualiser).visualisePOIs(names, addresses, latLngs)
                 } else {
                     Log.e("POI", "Failed to fetch POI data or received null values.")
                 }
