@@ -10,12 +10,13 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.visit.map.GoogleMapManager
 import com.example.visit.map.MapManager
 import com.example.visit.search.ButtonRequesterPOI
+import com.example.visit.search.DistancePOIRequester
+import com.example.visit.search.OnlinePOIRequestInterface
 import com.example.visit.search.RequestPOIInterface
 import com.example.visit.services.location.FusedLocationProvider
 import com.example.visit.services.location.LocationProvider
 import com.example.visit.services.permission.ActivityPermissionHandler
 import com.example.visit.services.permission.PermissionHandler
-import com.example.visit.visualisation.PopupVisualiser
 import com.example.visit.visualisation.RedDotVisualiser
 import com.example.visit.visualisation.Visualiser
 import com.google.android.gms.location.LocationServices
@@ -36,6 +37,7 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var mapManager: MapManager
     private lateinit var visualizer: Visualiser
     private lateinit var poiRequester: RequestPOIInterface
+    private lateinit var onlinePOIRequester: OnlinePOIRequestInterface
     private lateinit var map: GoogleMap
     private var lastKnownLocation: Location? = null
 
@@ -48,6 +50,10 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
         // Initialize the permission handler and location provider
         permissionHandler = ActivityPermissionHandler(this)
         locationProvider = FusedLocationProvider(LocationServices.getFusedLocationProviderClient(this))
+
+        // Initialize POI requester and online POI requester
+        //poiRequester = ButtonRequesterPOI(Places.createClient(this))
+        onlinePOIRequester = DistancePOIRequester(Places.createClient(this))
 
         // Request permissions if not granted yet
         if (permissionHandler.isPermissionGranted(Manifest.permission.ACCESS_FINE_LOCATION)) {
@@ -79,10 +85,7 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
         mapManager = GoogleMapManager(map, permissionHandler)
         mapManager.enableMyLocation(true)
 
-        // Set up POI requester (using Places API)
-        poiRequester = ButtonRequesterPOI(Places.createClient(this))
-
-        // Initialize the visualizer
+        // Initialize the visualizer (Red Dot Visualiser)
         visualizer = RedDotVisualiser(this, map)
 
         // Fetch the current location and move the camera to it
@@ -90,6 +93,12 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
             lastKnownLocation = location
             val targetLocation = location?.let { LatLng(it.latitude, it.longitude) } ?: defaultLocation
             mapManager.moveCamera(targetLocation, DEFAULT_ZOOM)
+
+            // Start tracking the movement and update POIs when the user moves
+            onlinePOIRequester.startTracking(location, radius = 400.0) { names, addresses, latLngs ->
+                // Visualize POIs dynamically based on the movement
+                (visualizer as RedDotVisualiser).visualisePOIs(names, addresses, latLngs)
+            }
         }
     }
 
@@ -100,14 +109,14 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
             poiRequester.fetchPOIs(Location("").apply {
                 latitude = location.latitude
                 longitude = location.longitude
-            }, radius = 500.0) { names, addresses, latLngs ->
+            }, radius = 400.0) { names, addresses, latLngs ->
                 // Handle POI data here, e.g., log or display it on the map
                 if (addresses != null && latLngs != null) {
                     for (i in names.indices) {
                         Log.d("POI", "Name: ${names[i]}, Address: ${addresses[i]}, Location: ${latLngs[i]}")
                     }
 
-                    // Visualize POIs using PopupVisualiser
+                    // Visualize POIs using RedDotVisualiser
                     (visualizer as RedDotVisualiser).visualisePOIs(names, addresses, latLngs)
                 } else {
                     Log.e("POI", "Failed to fetch POI data or received null values.")
@@ -142,9 +151,10 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
         return super.onOptionsItemSelected(item)
     }
 
+    // Stop tracking POIs when the activity is stopped
     override fun onStop() {
         super.onStop()
-        // Ensure proper cleanup of the map and visualizer when activity is stopped
-        map.clear()
+        // Stop tracking POIs when the activity is stopped
+        onlinePOIRequester.stopTracking()
     }
 }
