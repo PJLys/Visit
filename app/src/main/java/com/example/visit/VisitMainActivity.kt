@@ -1,186 +1,149 @@
 package com.example.visit
 
 import android.Manifest
-import android.annotation.SuppressLint
-import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
+import com.example.visit.map.GoogleMapManager
+import com.example.visit.map.MapManager
 import com.example.visit.search.ButtonRequesterPOI
 import com.example.visit.search.RequestPOIInterface
+import com.example.visit.services.location.FusedLocationProvider
+import com.example.visit.services.location.LocationProvider
+import com.example.visit.services.permission.ActivityPermissionHandler
+import com.example.visit.services.permission.PermissionHandler
 import com.example.visit.visualisation.PopupVisualiser
 import com.example.visit.visualisation.Visualiser
-import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
-import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.libraries.places.api.Places
-import com.google.android.libraries.places.api.net.PlacesClient
+
+const val PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1
+const val DEFAULT_ZOOM = 15f
+val defaultLocation = LatLng(37.7749, -122.4194) // Example, San Francisco
 
 class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
-    private var map: GoogleMap? = null
-    private var cameraPosition: CameraPosition? = null
 
-    private lateinit var placesClient: PlacesClient
-    private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
-
-    private val defaultLocation = LatLng(-33.8523341, 151.2106085)
-    private var locationPermissionGranted = false
-    private var lastKnownLocation: Location? = null
-    private lateinit var visualiser: Visualiser
+    private lateinit var locationProvider: LocationProvider
+    private lateinit var permissionHandler: PermissionHandler
+    private lateinit var mapManager: MapManager
+    private lateinit var visualizer: Visualiser
     private lateinit var poiRequester: RequestPOIInterface
+    private lateinit var map: GoogleMap
+    private var lastKnownLocation: Location? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        if (savedInstanceState != null) {
-            lastKnownLocation = savedInstanceState.getParcelable(KEY_LOCATION, Location::class.java)
-            cameraPosition = savedInstanceState.getParcelable(KEY_CAMERA_POSITION, CameraPosition::class.java)
-        }
-
         setContentView(R.layout.activity_maps)
-
         Places.initialize(applicationContext, BuildConfig.MAPS_API_KEY)
-        placesClient = Places.createClient(this)
-        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
 
+        // Initialize the permission handler and location provider
+        permissionHandler = ActivityPermissionHandler(this)
+        locationProvider = FusedLocationProvider(LocationServices.getFusedLocationProviderClient(this))
+
+        // Request permissions if not granted yet
+        if (permissionHandler.isPermissionGranted(Manifest.permission.ACCESS_FINE_LOCATION)) {
+            setupMap()
+        } else {
+            permissionHandler.requestPermission(Manifest.permission.ACCESS_FINE_LOCATION, PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION)
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Initialize the map after the activity has started, avoiding early access to map fragments
+        if (!::map.isInitialized) {
+            setupMap()
+        }
+    }
+
+    // Map setup function to load the map
+    private fun setupMap() {
         val mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment?
         mapFragment?.getMapAsync(this)
     }
 
-    override fun onSaveInstanceState(outState: Bundle) {
-        map?.let { map ->
-            outState.putParcelable(KEY_CAMERA_POSITION, map.cameraPosition)
-            outState.putParcelable(KEY_LOCATION, lastKnownLocation)
+    // Callback when the map is ready
+    override fun onMapReady(googleMap: GoogleMap) {
+        map = googleMap
+
+        // Initialize MapManager with the map and permissionHandler
+        mapManager = GoogleMapManager(map, permissionHandler)
+        mapManager.enableMyLocation(true)
+
+        // Set up POI requester (using Places API)
+        poiRequester = ButtonRequesterPOI(Places.createClient(this))
+
+        // Initialize the visualizer
+        visualizer = PopupVisualiser(this, map)
+
+        // Fetch the current location and move the camera to it
+        locationProvider.getLastKnownLocation { location ->
+            lastKnownLocation = location
+            val targetLocation = location?.let { LatLng(it.latitude, it.longitude) } ?: defaultLocation
+            mapManager.moveCamera(targetLocation, DEFAULT_ZOOM)
         }
-        super.onSaveInstanceState(outState)
     }
 
+    // Fetch nearby POIs after pressing the button in the options menu
+    private fun fetchNearbyPOIs() {
+        lastKnownLocation?.let {
+            val location = LatLng(it.latitude, it.longitude)
+            poiRequester.fetchPOIs(Location("").apply {
+                latitude = location.latitude
+                longitude = location.longitude
+            }, radius = 400.0) { names, addresses, latLngs ->
+                // Handle POI data here, e.g., log or display it on the map
+                if (addresses != null && latLngs != null) {
+                    for (i in names.indices) {
+                        Log.d("POI", "Name: ${names[i]}, Address: ${addresses[i]}, Location: ${latLngs[i]}")
+                    }
+
+                    // Visualize POIs using PopupVisualiser
+                    (visualizer as PopupVisualiser).visualisePOIs(names, addresses, latLngs)
+                } else {
+                    Log.e("POI", "Failed to fetch POI data or received null values.")
+                }
+            }
+        } ?: Log.e("POI", "Last known location is null, cannot fetch POIs.")
+    }
+
+    // Handle permission result
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION) {
+            if (grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                setupMap()
+            } else {
+                Log.e("Permissions", "Location permission denied.")
+            }
+        }
+    }
+
+    // Setup the options menu with a button for fetching POIs
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.current_place_menu, menu)
         return true
     }
 
+    // Handle options menu item selection
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == R.id.option_get_place) {
-            // Ensure lastKnownLocation is not null, and provide a default radius if necessary
-            val radius = 400.0 // Set a radius of 1000 meters, adjust if needed
-            if (lastKnownLocation != null) {
-                poiRequester.fetchPOIs(lastKnownLocation, radius) { placeNames, placeAddresses, placeLatLngs ->
-                    // Here, you can call your visualizer or process the data as needed
-                    visualiser.visualisePOIs(placeNames, placeAddresses, placeLatLngs)
-                }
-            } else {
-                Log.e(TAG, "Last known location is null, cannot fetch POIs.")
-            }
+            fetchNearbyPOIs()
         }
-        return true
+        return super.onOptionsItemSelected(item)
     }
 
-
-    override fun onMapReady(map: GoogleMap) {
-        this.map = map
-
-        visualiser = PopupVisualiser(this, map)
-
-        getLocationPermission()
-        updateLocationUI()
-
-        // Initialize POI requester once the map is ready
-        poiRequester = ButtonRequesterPOI(placesClient)
-
-        getDeviceLocation()
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun getDeviceLocation() {
-        try {
-            if (locationPermissionGranted) {
-                fusedLocationProviderClient.lastLocation.addOnCompleteListener(this) { task ->
-                    if (task.isSuccessful) {
-                        lastKnownLocation = task.result
-                        if (lastKnownLocation != null) {
-                            // Update POI requester after getting device location
-                            poiRequester = ButtonRequesterPOI(placesClient)
-
-                            // Update the map camera
-                            map?.moveCamera(
-                                CameraUpdateFactory.newLatLngZoom(
-                                    LatLng(lastKnownLocation!!.latitude, lastKnownLocation!!.longitude),
-                                    DEFAULT_ZOOM.toFloat()
-                                )
-                            )
-                        } else {
-                            // Fallback to default location if location is null
-                            Log.e(TAG, "Location is null, using default location.")
-                            map?.moveCamera(CameraUpdateFactory.newLatLngZoom(defaultLocation, DEFAULT_ZOOM.toFloat()))
-
-                            // Initialize POI requester with default location (optional, as a fallback)
-                            poiRequester = ButtonRequesterPOI(placesClient)
-                        }
-                    } else {
-                        Log.e(TAG, "Failed to get device location.")
-                        map?.moveCamera(CameraUpdateFactory.newLatLngZoom(defaultLocation, DEFAULT_ZOOM.toFloat()))
-                    }
-                }
-            }
-        } catch (e: SecurityException) {
-            Log.e("Exception: %s", e.message, e)
-        }
-    }
-
-    private fun getLocationPermission() {
-        if (ContextCompat.checkSelfPermission(this.applicationContext, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            locationPermissionGranted = true
-        } else {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION)
-        }
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        locationPermissionGranted = false
-        if (requestCode == PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                locationPermissionGranted = true
-            }
-        }
-        updateLocationUI()
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-    }
-
-    private fun updateLocationUI() {
-        if (map == null) return
-
-        try {
-            if (locationPermissionGranted) {
-                map?.isMyLocationEnabled = true
-                map?.uiSettings?.isMyLocationButtonEnabled = true
-            } else {
-                map?.isMyLocationEnabled = false
-                map?.uiSettings?.isMyLocationButtonEnabled = false
-                lastKnownLocation = null
-                getLocationPermission()
-            }
-        } catch (e: SecurityException) {
-            Log.e("Exception: %s", e.message, e)
-        }
-    }
-
-    companion object {
-        private const val TAG = "VisitMainActivity"
-        private const val DEFAULT_ZOOM = 15
-        private const val PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1
-
-        private const val KEY_CAMERA_POSITION = "camera_position"
-        private const val KEY_LOCATION = "location"
+    override fun onStop() {
+        super.onStop()
+        // Ensure proper cleanup of the map and visualizer when activity is stopped
+        map.clear()
     }
 }
