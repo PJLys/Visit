@@ -9,11 +9,15 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.Marker
 
 class RedDotVisualiser(
     private val context: Context,
     private val googleMap: GoogleMap
 ) : Visualiser {
+
+    // List to hold references to the markers added to the map
+    private val markers = mutableListOf<Marker>()
 
     // Function to create a small red dot Bitmap
     private fun createRedDot(): Bitmap {
@@ -39,7 +43,7 @@ class RedDotVisualiser(
         placeLatLngs: Array<LatLng?>?
     ) {
         // Clear any existing markers on the map before adding new ones
-        googleMap.clear()
+        clearPOIs()
 
         // Get the red dot icon
         val redDot = createRedDot()
@@ -54,9 +58,18 @@ class RedDotVisualiser(
                     .snippet(placeAddresses?.get(index) ?: "No address available") // Set address as snippet
                     .icon(BitmapDescriptorFactory.fromBitmap(redDot)) // Use the custom red dot as marker icon
 
-                // Add the marker to the map
-                googleMap.addMarker(markerOptions)
+                // Add the marker to the map and store the reference in the list
+                val marker = googleMap.addMarker(markerOptions)
+                marker?.let { markers.add(it) }
             }
         }
+    }
+
+    // Clears all POIs (removes all markers from the map)
+    override fun clearPOIs() {
+        // Remove each marker from the map
+        markers.forEach { it.remove() }
+        // Clear the list of markers
+        markers.clear()
     }
 }

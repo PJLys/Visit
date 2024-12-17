@@ -42,4 +42,8 @@ class PopupVisualiser(private val context: Context, private val map: GoogleMap) 
             .setItems(nonNullPlaceNames, listener) // Pass the non-nullable array here
             .show()
     }
+
+    override fun clearPOIs() {
+        TODO("Not yet implemented")
+    }
 }

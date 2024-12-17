@@ -9,10 +9,8 @@ import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
 import com.example.visit.map.GoogleMapManager
 import com.example.visit.map.MapManager
-import com.example.visit.search.ButtonRequesterPOI
 import com.example.visit.search.DistancePOIRequester
 import com.example.visit.search.OnlinePOIRequestInterface
-import com.example.visit.search.RequestPOIInterface
 import com.example.visit.services.location.FusedLocationProvider
 import com.example.visit.services.location.LocationProvider
 import com.example.visit.services.permission.ActivityPermissionHandler
@@ -35,27 +33,26 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var locationProvider: LocationProvider
     private lateinit var permissionHandler: PermissionHandler
     private lateinit var mapManager: MapManager
-    private lateinit var visualizer: Visualiser
-    private lateinit var poiRequester: RequestPOIInterface
-    private lateinit var onlinePOIRequester: OnlinePOIRequestInterface
+    private lateinit var poiRequester: OnlinePOIRequestInterface
+    private var visualizer: Visualiser? = null  // Make it nullable, as it will be initialized in onMapReady
     private lateinit var map: GoogleMap
     private var lastKnownLocation: Location? = null
+    private var isTrackingPOIs = false  // Track whether POI tracking is active
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         setContentView(R.layout.activity_maps)
+
         Places.initialize(applicationContext, BuildConfig.MAPS_API_KEY)
 
-        // Initialize the permission handler and location provider
+        // Initialize permission handler and location provider
         permissionHandler = ActivityPermissionHandler(this)
         locationProvider = FusedLocationProvider(LocationServices.getFusedLocationProviderClient(this))
 
-        // Initialize POI requester and online POI requester
-        //poiRequester = ButtonRequesterPOI(Places.createClient(this))
-        onlinePOIRequester = DistancePOIRequester(Places.createClient(this))
+        // Initialize the POI requester (DistancePOIRequester for distance-based updates)
+        poiRequester = DistancePOIRequester(Places.createClient(this), locationProvider)
 
-        // Request permissions if not granted yet
+        // Check permissions and set up the map
         if (permissionHandler.isPermissionGranted(Manifest.permission.ACCESS_FINE_LOCATION)) {
             setupMap()
         } else {
@@ -80,49 +77,18 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
     // Callback when the map is ready
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
-
-        // Initialize MapManager with the map and permissionHandler
         mapManager = GoogleMapManager(map, permissionHandler)
         mapManager.enableMyLocation(true)
 
-        // Initialize the visualizer (Red Dot Visualiser)
+        // Initialize the visualizer after the map is ready
         visualizer = RedDotVisualiser(this, map)
 
-        // Fetch the current location and move the camera to it
+        // Fetch the last known location, but don't start POI tracking here
         locationProvider.getLastKnownLocation { location ->
             lastKnownLocation = location
             val targetLocation = location?.let { LatLng(it.latitude, it.longitude) } ?: defaultLocation
             mapManager.moveCamera(targetLocation, DEFAULT_ZOOM)
-
-            // Start tracking the movement and update POIs when the user moves
-            onlinePOIRequester.startTracking(location, radius = 400.0) { names, addresses, latLngs ->
-                // Visualize POIs dynamically based on the movement
-                (visualizer as RedDotVisualiser).visualisePOIs(names, addresses, latLngs)
-            }
         }
-    }
-
-    // Fetch nearby POIs after pressing the button in the options menu
-    private fun fetchNearbyPOIs() {
-        lastKnownLocation?.let {
-            val location = LatLng(it.latitude, it.longitude)
-            poiRequester.fetchPOIs(Location("").apply {
-                latitude = location.latitude
-                longitude = location.longitude
-            }, radius = 400.0) { names, addresses, latLngs ->
-                // Handle POI data here, e.g., log or display it on the map
-                if (addresses != null && latLngs != null) {
-                    for (i in names.indices) {
-                        Log.d("POI", "Name: ${names[i]}, Address: ${addresses[i]}, Location: ${latLngs[i]}")
-                    }
-
-                    // Visualize POIs using RedDotVisualiser
-                    (visualizer as RedDotVisualiser).visualisePOIs(names, addresses, latLngs)
-                } else {
-                    Log.e("POI", "Failed to fetch POI data or received null values.")
-                }
-            }
-        } ?: Log.e("POI", "Last known location is null, cannot fetch POIs.")
     }
 
     // Handle permission result
@@ -145,16 +111,34 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
 
     // Handle options menu item selection
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (item.itemId == R.id.option_get_place) {
-            fetchNearbyPOIs()
+        when (item.itemId) {
+            R.id.option_start -> {
+                // Start fetching POIs in online mode when the start button is pressed
+                if (!isTrackingPOIs) {
+                    isTrackingPOIs = true
+                    poiRequester.startTracking(lastKnownLocation, radius = 400.0) { placeNames, placeAddresses, placeLatLngs ->
+                        // Feed the fetched POIs into the visualizer
+                        visualizer?.visualisePOIs(placeNames, placeAddresses, placeLatLngs)
+                    }
+                    // Change the button to stop icon after starting tracking
+                    item.setIcon(R.drawable.ic_stop)  // Replace with actual stop icon resource
+                } else {
+                    // Stop POI tracking when the button is pressed again
+                    isTrackingPOIs = false
+                    poiRequester.stopTracking()
+                    visualizer?.clearPOIs()  // Clear visualized POIs
+                    item.setIcon(R.drawable.ic_play)  // Replace with actual start icon resource
+                }
+                return true
+            }
+            else -> return super.onOptionsItemSelected(item)
         }
-        return super.onOptionsItemSelected(item)
     }
 
     // Stop tracking POIs when the activity is stopped
     override fun onStop() {
         super.onStop()
         // Stop tracking POIs when the activity is stopped
-        onlinePOIRequester.stopTracking()
+        poiRequester.stopTracking()
     }
 }

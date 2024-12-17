@@ -8,4 +8,6 @@ interface Visualiser {
         placeAddresses: Array<String?>?,
         placeLatLngs: Array<LatLng?>?
     )
+
+    fun clearPOIs()
 }
