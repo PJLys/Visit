@@ -15,8 +15,8 @@ import com.example.visit.services.location.FusedLocationProvider
 import com.example.visit.services.location.LocationProvider
 import com.example.visit.services.permission.ActivityPermissionHandler
 import com.example.visit.services.permission.PermissionHandler
-import com.example.visit.visualisation.RedDotVisualiser
-import com.example.visit.visualisation.Visualiser
+import com.example.visit.visualisation.poi.RedDotVisualiser
+import com.example.visit.visualisation.poi.POIVisualiser
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
@@ -34,7 +34,7 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var permissionHandler: PermissionHandler
     private lateinit var mapManager: MapManager
     private lateinit var poiRequester: OnlinePOIRequestInterface
-    private var visualizer: Visualiser? = null  // Make it nullable, as it will be initialized in onMapReady
+    private var visualizer: POIVisualiser? = null  // Make it nullable, as it will be initialized in onMapReady
     private lateinit var map: GoogleMap
     private var lastKnownLocation: Location? = null
     private var isTrackingPOIs = false  // Track whether POI tracking is active

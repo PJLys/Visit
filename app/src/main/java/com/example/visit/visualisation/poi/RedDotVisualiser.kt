@@ -1,4 +1,4 @@
-package com.example.visit.visualisation
+package com.example.visit.visualisation.poi
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -14,7 +14,7 @@ import com.google.android.gms.maps.model.Marker
 class RedDotVisualiser(
     private val context: Context,
     private val googleMap: GoogleMap
-) : Visualiser {
+) : POIVisualiser {
 
     // List to hold references to the markers added to the map
     private val markers = mutableListOf<Marker>()

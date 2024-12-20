@@ -1,4 +1,4 @@
-package com.example.visit.visualisation
+package com.example.visit.visualisation.poi
 
 import android.content.Context
 import android.content.DialogInterface
@@ -8,7 +8,7 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 
-class PopupVisualiser(private val context: Context, private val map: GoogleMap) : Visualiser {
+class PopupVisualiser(private val context: Context, private val map: GoogleMap) : POIVisualiser {
 
     override fun visualisePOIs(
         placeNames: Array<String?>,

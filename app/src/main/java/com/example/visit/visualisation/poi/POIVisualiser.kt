@@ -1,8 +1,8 @@
-package com.example.visit.visualisation
+package com.example.visit.visualisation.poi
 
 import com.google.android.gms.maps.model.LatLng
 
-interface Visualiser {
+interface POIVisualiser {
     fun visualisePOIs(
         placeNames: Array<String?>,
         placeAddresses: Array<String?>?,
