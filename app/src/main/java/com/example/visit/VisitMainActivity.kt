@@ -15,6 +15,8 @@ import com.example.visit.services.location.FusedLocationProvider
 import com.example.visit.services.location.LocationProvider
 import com.example.visit.services.permission.ActivityPermissionHandler
 import com.example.visit.services.permission.PermissionHandler
+import com.example.visit.visualisation.heatmap.MovementVisualiser
+import com.example.visit.visualisation.heatmap.HeatmapVisualiser
 import com.example.visit.visualisation.poi.RedDotVisualiser
 import com.example.visit.visualisation.poi.POIVisualiser
 import com.google.android.gms.location.LocationServices
@@ -34,10 +36,12 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var permissionHandler: PermissionHandler
     private lateinit var mapManager: MapManager
     private lateinit var poiRequester: OnlinePOIRequestInterface
-    private var visualizer: POIVisualiser? = null  // Make it nullable, as it will be initialized in onMapReady
+    private var poiVisualizer: POIVisualiser? = null  // POI Visualizer for POIs
+    private var heatmapVisualizer: HeatmapVisualiser? = null  // Heatmap Visualizer for movements
     private lateinit var map: GoogleMap
     private var lastKnownLocation: Location? = null
     private var isTrackingPOIs = false  // Track whether POI tracking is active
+    private var isTrackingMovements = false  // Track whether movement tracking is active
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -80,10 +84,13 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
         mapManager = GoogleMapManager(map, permissionHandler)
         mapManager.enableMyLocation(true)
 
-        // Initialize the visualizer after the map is ready
-        visualizer = RedDotVisualiser(this, map)
+        // Initialize the POI Visualizer (RedDotVisualiser) after the map is ready
+        poiVisualizer = RedDotVisualiser(this, map)
 
-        // Fetch the last known location, but don't start POI tracking here
+        // Initialize the Heatmap Visualizer (MovementVisualiser) after the map is ready
+        heatmapVisualizer = MovementVisualiser(this, map)
+
+        // Fetch the last known location, but don't start POI or movement tracking here
         locationProvider.getLastKnownLocation { location ->
             lastKnownLocation = location
             val targetLocation = location?.let { LatLng(it.latitude, it.longitude) } ?: defaultLocation
@@ -103,7 +110,7 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
-    // Setup the options menu with a button for fetching POIs
+    // Setup the options menu with a button for fetching POIs and starting movement tracking
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.current_place_menu, menu)
         return true
@@ -113,32 +120,71 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.option_start -> {
-                // Start fetching POIs in online mode when the start button is pressed
-                if (!isTrackingPOIs) {
-                    isTrackingPOIs = true
-                    poiRequester.startTracking(lastKnownLocation, radius = 400.0) { placeNames, placeAddresses, placeLatLngs ->
-                        // Feed the fetched POIs into the visualizer
-                        visualizer?.visualisePOIs(placeNames, placeAddresses, placeLatLngs)
-                    }
-                    // Change the button to stop icon after starting tracking
+                if (!isTrackingPOIs && !isTrackingMovements) {
+                    // Start both POI tracking and movement heatmap visualization
+                    startTracking()
                     item.setIcon(R.drawable.ic_stop)  // Replace with actual stop icon resource
                 } else {
-                    // Stop POI tracking when the button is pressed again
-                    isTrackingPOIs = false
-                    poiRequester.stopTracking()
-                    visualizer?.clearPOIs()  // Clear visualized POIs
+                    // Stop both POI tracking and movement heatmap visualization
+                    stopTracking()
                     item.setIcon(R.drawable.ic_play)  // Replace with actual start icon resource
                 }
                 return true
             }
+
             else -> return super.onOptionsItemSelected(item)
         }
     }
 
-    // Stop tracking POIs when the activity is stopped
+    // Start tracking both POIs and movements
+    private fun startTracking() {
+        // Start POI tracking
+        isTrackingPOIs = true
+        poiRequester.startTracking(lastKnownLocation, radius = 400.0) { placeNames, placeAddresses, placeLatLngs ->
+            // Feed the fetched POIs into the visualizer
+            poiVisualizer?.visualisePOIs(placeNames, placeAddresses, placeLatLngs)
+        }
+
+        // Start movement tracking (simulate periodic location fetches)
+        isTrackingMovements = true
+        simulateMovementTracking()
+    }
+
+    // Stop tracking both POIs and movements
+    private fun stopTracking() {
+        // Stop POI tracking
+        isTrackingPOIs = false
+        poiRequester.stopTracking()
+        poiVisualizer?.clearPOIs()  // Clear visualized POIs
+
+        // Stop movement tracking
+        isTrackingMovements = false
+        heatmapVisualizer?.clearMovements()  // Clear heatmap
+    }
+
+    // Simulate movement tracking (calling getLastKnownLocation periodically)
+    private fun simulateMovementTracking() {
+        val updateInterval = 5000L // 5 seconds
+        val handler = android.os.Handler(mainLooper)
+
+        handler.postDelayed(object : Runnable {
+            override fun run() {
+                if (isTrackingMovements) {
+                    locationProvider.getLastKnownLocation { location ->
+                        location?.let {
+                            val movementPoint = LatLng(it.latitude, it.longitude)
+                            heatmapVisualizer?.visualiseMovements(listOf(movementPoint))  // Visualize the movement point on the heatmap
+                        }
+                    }
+                    handler.postDelayed(this, updateInterval)
+                }
+            }
+        }, updateInterval)
+    }
+
+    // Stop tracking POIs and movements when the activity is stopped
     override fun onStop() {
         super.onStop()
-        // Stop tracking POIs when the activity is stopped
-        poiRequester.stopTracking()
+        stopTracking()
     }
 }

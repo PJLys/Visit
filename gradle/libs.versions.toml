@@ -1,4 +1,5 @@
 [versions]
+androidMapsUtils = "2.3.0"
 compileSdk = "35"
 coreKtxVersion = "1.15.0"
 gradle = "8.7.3"
@@ -20,6 +21,7 @@ espressoCore = "3.0.2"
 javaVersion = "21"
 
 [libraries]
+androidMapsUtils = { module = "com.google.maps.android:android-maps-utils", version.ref = "androidMapsUtils" }
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 coreKtxV190 = { module = "androidx.core:core-ktx", version.ref = "coreKtxVersion" }
 gradle = { module = "com.android.tools.build:gradle", version.ref = "gradle" }

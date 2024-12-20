@@ -66,6 +66,7 @@ dependencies {
     implementation(libs.coreKtx)
     implementation(libs.lifecycleViewModelKtx)
     implementation(libs.kotlinStdlibJdk7)
+    implementation(libs.androidMapsUtils)
 }
 
 secrets {
