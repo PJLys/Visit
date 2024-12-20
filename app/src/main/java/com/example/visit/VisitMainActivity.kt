@@ -15,8 +15,8 @@ import com.example.visit.services.location.FusedLocationProvider
 import com.example.visit.services.location.LocationProvider
 import com.example.visit.services.permission.ActivityPermissionHandler
 import com.example.visit.services.permission.PermissionHandler
-import com.example.visit.visualisation.heatmap.MovementVisualiser
-import com.example.visit.visualisation.heatmap.HeatmapVisualiser
+import com.example.visit.visualisation.movement.HeatmapVisualiser
+import com.example.visit.visualisation.movement.MovementVisualiserI
 import com.example.visit.visualisation.poi.RedDotVisualiser
 import com.example.visit.visualisation.poi.POIVisualiser
 import com.google.android.gms.location.LocationServices
@@ -37,7 +37,7 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var mapManager: MapManager
     private lateinit var poiRequester: OnlinePOIRequestInterface
     private var poiVisualizer: POIVisualiser? = null  // POI Visualizer for POIs
-    private var heatmapVisualizer: HeatmapVisualiser? = null  // Heatmap Visualizer for movements
+    private var movementVisualizer: MovementVisualiserI? = null  // Movement Visualizer for heatmap
     private lateinit var map: GoogleMap
     private var lastKnownLocation: Location? = null
     private var isTrackingPOIs = false  // Track whether POI tracking is active
@@ -85,10 +85,10 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
         mapManager.enableMyLocation(true)
 
         // Initialize the POI Visualizer (RedDotVisualiser) after the map is ready
-        poiVisualizer = RedDotVisualiser(this, map)
+        poiVisualizer = RedDotVisualiser(map)
 
-        // Initialize the Heatmap Visualizer (MovementVisualiser) after the map is ready
-        heatmapVisualizer = MovementVisualiser(this, map)
+        // Initialize the Movement Visualizer (MovementVisualiser) after the map is ready
+        movementVisualizer = HeatmapVisualiser(locationProvider, map)
 
         // Fetch the last known location, but don't start POI or movement tracking here
         locationProvider.getLastKnownLocation { location ->
@@ -147,7 +147,7 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
 
         // Start movement tracking (simulate periodic location fetches)
         isTrackingMovements = true
-        simulateMovementTracking()
+        movementVisualizer?.start()  // Start visualizing movements on the heatmap
     }
 
     // Stop tracking both POIs and movements
@@ -159,27 +159,7 @@ class VisitMainActivity : AppCompatActivity(), OnMapReadyCallback {
 
         // Stop movement tracking
         isTrackingMovements = false
-        heatmapVisualizer?.clearMovements()  // Clear heatmap
-    }
-
-    // Simulate movement tracking (calling getLastKnownLocation periodically)
-    private fun simulateMovementTracking() {
-        val updateInterval = 5000L // 5 seconds
-        val handler = android.os.Handler(mainLooper)
-
-        handler.postDelayed(object : Runnable {
-            override fun run() {
-                if (isTrackingMovements) {
-                    locationProvider.getLastKnownLocation { location ->
-                        location?.let {
-                            val movementPoint = LatLng(it.latitude, it.longitude)
-                            heatmapVisualizer?.visualiseMovements(listOf(movementPoint))  // Visualize the movement point on the heatmap
-                        }
-                    }
-                    handler.postDelayed(this, updateInterval)
-                }
-            }
-        }, updateInterval)
+        movementVisualizer?.stop()  // Stop the movement heatmap visualization
     }
 
     // Stop tracking POIs and movements when the activity is stopped

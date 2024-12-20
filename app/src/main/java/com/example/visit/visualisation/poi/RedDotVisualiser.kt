@@ -12,7 +12,6 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.Marker
 
 class RedDotVisualiser(
-    private val context: Context,
     private val googleMap: GoogleMap
 ) : POIVisualiser {
 
